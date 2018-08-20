@@ -1,0 +1,17 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[dev-packages]
+
+[packages]
+requests = "*"
+django = "*"
+djangorestframework = "*"
+mock = "*"
+pymongo = {version = "*", extras = ["tls", "srv", "gssapi"]}
+celery = "*"
+
+[requires]
+python_version = "2.7"
