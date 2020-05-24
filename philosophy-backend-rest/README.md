@@ -1,15 +1,11 @@
-::Install piping and virtaulenv
+::Installing depdencies on fresh environment
+Will use pipenv instead of virtualenv to handle dependencies
   $ pip install --user pipenv
 
   $ export PATH="$PATH:/Users/njtwentyone/Library/Python/2.7/bin"
 
-   $ pip install requests
+  $ pipenv install
 
-   [THEN ignore steps]
-	virtualenv env
-	source env/bin/activate
-   [Instead run]
-   	$ pipenv shell
 
 to add another package do $> pipenv install {module}
 to install all in popFile do $> pipenv install
@@ -35,7 +31,8 @@ celery
 python -m unittest discover -v
 
 :: run server
-python manage.py runserver 5000
+[pipenv run] python manage.py runserver 5000
+
 
 Profiling:
 https://julien.danjou.info/guide-to-python-profiling-cprofile-concrete-case-carbonara/
@@ -76,3 +73,21 @@ https://simpleisbetterthancomplex.com/tutorial/2017/08/20/how-to-use-celery-with
 
  :: start celery
  $(pipenvshell) celery -A tutorial worker -l info
+
+ ########## TODO ###########
+ need to include example urls- http://127.0.0.1:5000/wiki/degreeOfSeperation/path/?title=Science
+
+
+ set up mongo db env to remote db at project root
+ $> echo DJANGO_BENTO_MONGO_SERVER_URL=mongodb+srv://{username}:{password}@{host} >>.env
+ -- probably fill in values for conf/production.conf
+
+setup celery broker
+$> echo DJANGO_BENTO_BROKER_URL=amqp://teifhquv:x1DIY3usAUN5UYXWNos-kO_Onbu-eVE1@moose.rmq.cloudamqp.com/teifhquv >>.env
+$> echo DJANGO_BENTO_CELERY_BROKER_URL=amqp://teifhquv:x1DIY3usAUN5UYXWNos-kO_Onbu-eVE1@moose.rmq.cloudamqp.com/teifhquv >>.env
+update celery broker am philosphyrest/settings.py
+BROKER_URL & CELERY_BROKER_URL
+
+
+need to store existing results in graph database. once path is found, in (no)sql database, only way to store
+subset results is creating O(n^2) inserts. Graph should only result in O(n)
