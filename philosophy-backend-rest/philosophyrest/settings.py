@@ -125,8 +125,13 @@ LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'formatters': {
+        'verbose': {
+            'format': '%(asctime)s - %(levelname)s - %(process)d - %(thread)d - %(module)s - %(name)s - %(funcName)s - %(message)s',
+            'style': '{',
+        },
         'simple': {
-            'format': '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            'format': '%(asctime)s - %(levelname)s - %(name)s - %(funcName)s - %(message)s',
+            'style': '{',
         },
     },
     'handlers': {
@@ -134,11 +139,13 @@ LOGGING = {
             'level': 'DEBUG',
             'class': 'logging.FileHandler',
             'filename': os.path.join(BASE_DIR, 'logs/application.log'),
+            'formatter': 'verbose',
         },
         'console': {
             'level': 'DEBUG',
             'class': 'logging.StreamHandler',
             'stream': 'ext://sys.stdout',
+            'formatter': 'simple',
         },
     },
     'loggers': {
