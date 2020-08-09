@@ -91,3 +91,7 @@ BROKER_URL & CELERY_BROKER_URL
 
 need to store existing results in graph database. once path is found, in (no)sql database, only way to store
 subset results is creating O(n^2) inserts. Graph should only result in O(n)
+
+issue with parsing rest_api_response:
+{"status": "data", "searchTitle": "Alchemy", "pathTitles": {"paths": ["Alchemy", "Philosophy"], "sessionId": "EPPBV31D"}}
+{"status": "data", "searchTitle": "Alchemy", "pathTitles": {"paths": ["Alchemy", "Received view of theories", "Philosophy"], "sessionId": "5MVKDJ78"}}
