@@ -101,7 +101,7 @@ class DegreeOfSeperationWiki(DegreeOfSeperation):
         queue = PeekQueue()
         self._setUp(sessionId, startTitle)
         paths = self._determinePathsHelper(startTitle, endTitle, sessionId, queue)
-        logger.debug("startTitle: '%s', paths: %d,  neighbors: %s ..." % (startTitle, paths) )
+        logger.debug("found startTitle: '%s', paths: %s" % (startTitle, paths))
         self._cleanUp(sessionId)
         return paths
 
@@ -243,6 +243,8 @@ def determinePathsHelperWorker(degreeOfSeperation, worker_id, assigned_distance,
             processing_distance = current_distance
             total_num_workers = num_workers if p_queue.qsize() > 2 * num_workers else min(p_queue.qsize()/2, num_workers)
 
+            logger.debug("id: '%d' [create] workers: %d" % (worker_id, total_num_workers))
+
             for new_worker_id in range(1, total_num_workers):
                 thread_args = [degreeOfSeperation, new_worker_id, current_distance, num_workers, end_title, session_id, get_timeout, p_queue, msg_queue, ret_queue]
                 thread = Thread(target=determinePathsHelperWorker, args=thread_args)
@@ -256,11 +258,22 @@ def determinePathsHelperWorker(degreeOfSeperation, worker_id, assigned_distance,
         """
         if worker_id != 0 and current_distance != assigned_distance:
             p_queue.put(item)
+            logger.debug("id: '%d' [terminate] grabbed item at level %d only responsible for %d" % (worker_id, current_distance, processing_distance))
             return
 
         logger.debug("id: '%d' [dequeue] current_distance: %d current_title: '%s'  len(pQueue): %d" % (worker_id, current_distance, current_title, p_queue.qsize()))
 
-        for idx, neighborTitle in enumerate(degreeOfSeperation._getNeighborTitles(current_title, randomSort=True)):
+        neighbors = degreeOfSeperation._getNeighborTitles(current_title, randomSort=True)
+
+        """"
+        FIXME: not sure how moving end_title to the front of list, makes algorithm complete
+        seems like fixing symptom and not root cause
+        """
+        if end_title in neighbors:
+            neighbors.remove(end_title)
+            neighbors.insert(0, end_title)
+
+        for idx, neighborTitle in enumerate(neighbors):
 
             if idx % 100 == 0:
                 logger.debug("id: '%d' [add] neighbor_distance: %d neighborTitle: '%s' neighbor_title#: %d " % (worker_id, current_distance + 1, neighborTitle, idx,))

@@ -64,7 +64,8 @@ class DataStore(object):
 
 class DataStoreMongo(DataStore):
     def __init__(self, url = None):
-        self._client = MongoClient(url if url else 'mongodb://localhost:27017')
+        dbUrl = url if url else 'mongodb://localhost:27017'
+        self._client = MongoClient(dbUrl)
         self._db = self._client['bento']
         self._tmpVisited = 'temp_visited_'
         self._tmpPrevious = 'temp_previous_'
