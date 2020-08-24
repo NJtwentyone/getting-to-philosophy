@@ -125,8 +125,13 @@ LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'formatters': {
+        'verbose': {
+            'format': '%(asctime)s - %(levelname)s - %(process)d - %(thread)d - %(module)s - %(name)s - %(funcName)s - %(message)s',
+            'style': '{',
+        },
         'simple': {
-            'format': '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            'format': '%(asctime)s - %(levelname)s - %(name)s - %(funcName)s - %(message)s',
+            'style': '{',
         },
     },
     'handlers': {
@@ -134,11 +139,13 @@ LOGGING = {
             'level': 'DEBUG',
             'class': 'logging.FileHandler',
             'filename': os.path.join(BASE_DIR, 'logs/application.log'),
+            'formatter': 'verbose',
         },
         'console': {
             'level': 'DEBUG',
             'class': 'logging.StreamHandler',
             'stream': 'ext://sys.stdout',
+            'formatter': 'simple',
         },
     },
     'loggers': {
@@ -156,9 +163,11 @@ LOGGING = {
 }
 
 #Celery Config
-BROKER_URL = 'amqp://guest:guest@localhost:5672//'
-CELERY_BROKER_URL = 'amqp://guest:guest@localhost:5672//'
-#CELERY_BROKER_URL = 'amqp://localhost'
+#old local
+#BROKER_URL = 'amqp://guest:guest@localhost:5672//'
+#CELERY_BROKER_URL = 'amqp://guest:guest@localhost:5672//'
+BROKER_URL = os.environ.get('DJANGO_BENTO_BROKER_URL', None)
+CELERY_BROKER_URL = os.environ.get('DJANGO_BENTO_CELERY_BROKER_URL', None)
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'

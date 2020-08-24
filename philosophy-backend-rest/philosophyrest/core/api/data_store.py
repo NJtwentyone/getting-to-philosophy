@@ -64,7 +64,8 @@ class DataStore(object):
 
 class DataStoreMongo(DataStore):
     def __init__(self, url = None):
-        self._client = MongoClient(url if url else 'mongodb://localhost:27017')
+        dbUrl = url if url else 'mongodb://localhost:27017'
+        self._client = MongoClient(dbUrl)
         self._db = self._client['bento']
         self._tmpVisited = 'temp_visited_'
         self._tmpPrevious = 'temp_previous_'
@@ -146,29 +147,29 @@ class DataStoreMongoHybrid(DataStoreMongo):
         self._visited = {}
         self._previous = {}
 
-        def hasVisitedTitle(self, sessionId, titleName):
-            try:
-                return self._visited[titleName]
-            except KeyError as error:
-                return False
+    def hasVisitedTitle(self, sessionId, titleName):
+        try:
+            return self._visited[titleName]
+        except KeyError as error:
+            return False
 
-        def setVisitedTitle(self, sessionId, titleName, visited):
-            self._visited[titleName] = visited
-            return
+    def setVisitedTitle(self, sessionId, titleName, visited):
+        self._visited[titleName] = visited
+        return
 
-        def getPreviousTitle(self, sessionId, titleName):
-            try:
-                return self._previous[titleName]
-            except KeyError as error:
-                return False
+    def getPreviousTitle(self, sessionId, titleName):
+        try:
+            return self._previous[titleName]
+        except KeyError as error:
+            return False
 
-        def setPreviousTitle(self, sessionId, titleName, previousTitle):
-            self._previous[titleName] = previousTitle
-            return
+    def setPreviousTitle(self, sessionId, titleName, previousTitle):
+        self._previous[titleName] = previousTitle
+        return
 
-        def getVisitedCount(self, sessionId):
-            return len(self._visited)
+    def getVisitedCount(self, sessionId):
+        return len(self._visited)
 
-        def getSessionId(self, title):
-            # TODO find sessionId or best guess
-            return None
+    def getSessionId(self, title):
+        # TODO find sessionId or best guess
+        return None

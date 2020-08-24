@@ -8,8 +8,9 @@ from Queue import Queue, PriorityQueue, Empty
 from wiki_title import WikiTitle
 from data_store import DataStore
 from utils import randomStr
+import logging
 
-
+logger = logging.getLogger(__name__)
 
 class DegreeOfSeperation(object):
     __metaclass__ = abc.ABCMeta
@@ -100,6 +101,7 @@ class DegreeOfSeperationWiki(DegreeOfSeperation):
         queue = PeekQueue()
         self._setUp(sessionId, startTitle)
         paths = self._determinePathsHelper(startTitle, endTitle, sessionId, queue)
+        logger.debug("found startTitle: '%s', paths: %s" % (startTitle, paths))
         self._cleanUp(sessionId)
         return paths
 
@@ -164,7 +166,7 @@ class DegreeOfSeperationWiki(DegreeOfSeperation):
         # or (title, [atitle...endTitle])
         return restTitleNeighbors
 
-    def _getNeighborTitlesHelper(self, title):
+    def _getNeighborTitlesHelper(self, title, cacheResults=True):
         dbTitleNeighbors = self._dataStore.getTitleLinks(title)
         if dbTitleNeighbors:
             return dbTitleNeighbors
@@ -172,12 +174,15 @@ class DegreeOfSeperationWiki(DegreeOfSeperation):
         restTitleNeighbors = self._restApi.getTitleLinks(title)
         if restTitleNeighbors is False:
             restTitleNeighbors = []
-        self._dataStore.setTitleLinks(title, restTitleNeighbors)
 
+        if cacheResults is True:
+            self._dataStore.setTitleLinks(title, restTitleNeighbors)
+
+        logger.debug("title: '%s', len(neighbors): %d,  neighbors: %s ..." % (title, len(restTitleNeighbors), str(restTitleNeighbors)[:300] ) )
         return restTitleNeighbors
 
 class DegreeOfSeperationWikiThread(DegreeOfSeperationWiki):
-    def __init__(self, dataStore, restApi, threadCount = 5, timeout=10):
+    def __init__(self, dataStore, restApi, threadCount = 100, timeout=2):
         super(DegreeOfSeperationWikiThread, self).__init__(dataStore, restApi)
         self._threadCount = threadCount
         self._getTimeout = timeout
@@ -197,8 +202,9 @@ class DegreeOfSeperationWikiThread(DegreeOfSeperationWiki):
 
         # break off into thread function
         threads = []
-        for id in range(numWorkers):
-            threads.append(Thread(target=determinePathsHelperWorker, args=(self, id, numWorkers, endTitle, sessionId, getTimeout, pQueue, msgQueue, retQueue)))
+        for worker_id in range(1):
+            thread_args = [self, worker_id, 0, numWorkers, endTitle, sessionId, getTimeout, pQueue, msgQueue, retQueue]
+            threads.append(Thread(target=determinePathsHelperWorker, args=thread_args))
             threads[-1].start()
 
         for thread in threads:
@@ -206,43 +212,94 @@ class DegreeOfSeperationWikiThread(DegreeOfSeperationWiki):
 
         return self._constructPath(sessionId, None if retQueue.empty() else endTitle)
 
-def determinePathsHelperWorker(degreeOfSeperation, id, numWorkers, endTitle, sessionId, getTimeout, pQueue, msgQueue, retQueue):
+def determinePathsHelperWorker(degreeOfSeperation, worker_id, assigned_distance, num_workers, end_title, session_id, get_timeout, p_queue, msg_queue, ret_queue):
 
+    processing_distance = -1
     while True:
-        try:
-            msq = msgQueue.get(block=False)
-            if msq[0] == 'FOUND' or msq[0] == 'NOT_FOUND':
-                break
-        except Empty:
-            pass
-            # do nothing continue
+        if recievedStopMessage(worker_id, msg_queue):
+            return
 
         item = None
 
         try:
-            item = pQueue.get(block=True, timeout=getTimeout)
+            item = p_queue.get(block=True, timeout=get_timeout)
         except Empty:
-            if id == 0:
+            if worker_id == 0:
                 # master, assume if can't find work, then empty
-                for _ in range(numWorkers - 1):
-                    msgQueue.put(('NOT_FOUND', {'time': datetime.datetime.now()}))
+                for _ in range(num_workers - 1):
+                    logger.debug("id: '%d' (master) [queue] is empty" % (worker_id))
+                    msg_queue.put(('NOT_FOUND', {'time': datetime.datetime.now()}))
                 break
                 # else worker thread do nothing continue
 
         if item == None:
             continue
 
-        distance, currentTitle = item
+        current_distance, current_title = item
 
-        for neighborTitle in degreeOfSeperation._getNeighborTitles(currentTitle, randomSort=True):
-            if not degreeOfSeperation._hasVisited(sessionId, neighborTitle):
-                # '(distance + 1...' preserve BFS shortest distance processing between threads
-                pQueue.put((distance + 1, neighborTitle))
-                degreeOfSeperation._setVisited(sessionId, neighborTitle, True)
-                degreeOfSeperation._setPreviousTitle(sessionId, neighborTitle, currentTitle)
+        # goal slow start at beginning so threads to processing multiple distances
+        # master node AND changed to new current_distance AND queue has enough work for other nodes
+        if worker_id == 0 and processing_distance != current_distance and current_distance >= 1:
+            processing_distance = current_distance
+            total_num_workers = num_workers if p_queue.qsize() > 2 * num_workers else min(p_queue.qsize()/2, num_workers)
 
-            if neighborTitle == endTitle:
-                for _ in range(numWorkers):
-                    msgQueue.put(('FOUND', {'time': datetime.datetime.now()}))
-                retQueue.put({'title' : endTitle, 'time': datetime.datetime.now()})
+            logger.debug("id: '%d' [create] workers: %d" % (worker_id, total_num_workers))
+
+            for new_worker_id in range(1, total_num_workers):
+                thread_args = [degreeOfSeperation, new_worker_id, current_distance, num_workers, end_title, session_id, get_timeout, p_queue, msg_queue, ret_queue]
+                thread = Thread(target=determinePathsHelperWorker, args=thread_args)
+                thread.start()
+
+        """
+        goal only spawn worker threads for specific distance
+        once done with level terminate
+        don't want to do coordination messages, and there isn't a queue.peek()
+        so dequeue item, if not level, put back and then terminate
+        """
+        if worker_id != 0 and current_distance != assigned_distance:
+            p_queue.put(item)
+            logger.debug("id: '%d' [terminate] grabbed item at level %d only responsible for %d" % (worker_id, current_distance, processing_distance))
+            return
+
+        logger.debug("id: '%d' [dequeue] current_distance: %d current_title: '%s'  len(pQueue): %d" % (worker_id, current_distance, current_title, p_queue.qsize()))
+
+        neighbors = degreeOfSeperation._getNeighborTitles(current_title, randomSort=True)
+
+        """"
+        FIXME: not sure how moving end_title to the front of list, makes algorithm complete
+        seems like fixing symptom and not root cause
+        """
+        if end_title in neighbors:
+            neighbors.remove(end_title)
+            neighbors.insert(0, end_title)
+
+        for idx, neighborTitle in enumerate(neighbors):
+
+            if idx % 100 == 0:
+                logger.debug("id: '%d' [add] neighbor_distance: %d neighborTitle: '%s' neighbor_title#: %d " % (worker_id, current_distance + 1, neighborTitle, idx,))
+                # stop processing neighbor early
+                if recievedStopMessage(worker_id, msg_queue):
+                    logger.debug("id: '%d' [stop] processing neighbors" % (worker_id))
+                    return
+
+            if not degreeOfSeperation._hasVisited(session_id, neighborTitle):
+                # '(current_distance + 1...' preserve BFS shortest current_distance processing between threads
+                p_queue.put((current_distance + 1, neighborTitle))
+                degreeOfSeperation._setVisited(session_id, neighborTitle, True)
+                degreeOfSeperation._setPreviousTitle(session_id, neighborTitle, current_title)
+
+            if neighborTitle == end_title:
+                for _ in range(num_workers):
+                    msg_queue.put(('FOUND', {'time': datetime.datetime.now()}))
+                logger.debug("id: '%d' [found] '%s' issuing FOUND msg to all threads" % (worker_id, end_title))
+                ret_queue.put({'title' : end_title, 'time': datetime.datetime.now()})
                 break
+
+def recievedStopMessage(id, msgQueue):
+    try:
+        msq = msgQueue.get(block=False)
+        if msq[0] == 'FOUND' or msq[0] == 'NOT_FOUND':
+            logger.debug("id: '%d' ordered to stop by msg : %s len(msqQueue): %d" % (id, msq[0], msgQueue.qsize()) )
+            return True
+    except Empty:
+        return False
