@@ -4,7 +4,7 @@ Will use pipenv instead of virtualenv to handle dependencies
 
   $ export PATH="$PATH:/Users/njtwentyone/Library/Python/2.7/bin"
 
-  $ pipenv install
+  $ pipenv install -r requirements.txt
 
 
 to add another package do $> pipenv install {module}
