@@ -9,12 +9,10 @@ https://docs.djangoproject.com/en/1.11/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/1.11/ref/settings/
 """
-"""
-By default this is used for testing and development.
-All production changes should be in in production_settings.py
-"""
 
 import os
+import random
+import string
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -24,12 +22,14 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # See https://docs.djangoproject.com/en/1.11/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = '(#o2m2d)!1r94#4s6e@njo4&h%rpl99!76+pj+2g-y5csw$sjq'
+random_secret_str  = ''.join([random.choice(string.ascii_letters + string.digits) for n in xrange(50)])
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', random_secret_str)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+#DEBUG = True
 
-ALLOWED_HOSTS = []
+## TODO make more stringent
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
