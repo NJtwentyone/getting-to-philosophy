@@ -13,7 +13,7 @@
     "heroku-postbuild": "cd client && npm install && npm install --only=dev --no-shrinkwrap && npm run build"
   },
   "dependencies": {
-    "axios": "^0.18.0",
+    "axios": "^0.18.1",
     "hapi": "^17.5.2",
     "request": "^2.87.0",
     "winston-loggly-bulk": "^3.1.0"
