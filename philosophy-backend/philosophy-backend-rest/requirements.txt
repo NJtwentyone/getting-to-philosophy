@@ -6,7 +6,7 @@ certifi==2020.6.20
 chardet==3.0.4
 configparser==4.0.2 ; python_version < '3'
 contextlib2==0.6.0.post1 ; python_version < '3'
-django==1.11.29
+django==2.2.24
 djangorestframework==3.9.4
 dnspython==1.16.0
 funcsigs==1.0.2 ; python_version < '3.3'
